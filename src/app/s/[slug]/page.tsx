@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 
 // Import the card sort interface
 import { CardSortInterface } from '@/components/card-sort';
+import { useCardSortStore } from '@/store/card-sort-store';
 import { Card, Category } from '@/types';
 
 interface StudyData {
@@ -269,8 +270,37 @@ function ParticipantSortingInterface({
     ? study.categories.map(c => ({ id: c.id, name: c.name }))
     : undefined;
 
-  // TODO: Integrate with CardSortInterface properly
-  // For now, render a simplified version
+  const handleComplete = () => {
+    // Get current state from store
+    const state = useCardSortStore.getState();
+    
+    // Build placements array from all categories
+    const placements: Array<{
+      cardId: string;
+      categoryId: string;
+      categoryName: string;
+      position: number;
+    }> = [];
+    
+    state.categories.forEach((category: { id: string; name: string; cardIds: string[] }) => {
+      category.cardIds.forEach((cardId: string, position: number) => {
+        placements.push({
+          cardId,
+          categoryId: category.id,
+          categoryName: category.name,
+          position,
+        });
+      });
+    });
+
+    // Get created categories for open sorting
+    const createdCategories = study.mode === 'OPEN'
+      ? state.categories.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))
+      : undefined;
+
+    onComplete(placements, createdCategories);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <CardSortInterface
@@ -283,11 +313,7 @@ function ParticipantSortingInterface({
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           size="lg"
-          onClick={() => {
-            // In a real implementation, we'd get the current state from the store
-            // For now, just complete
-            onComplete([]);
-          }}
+          onClick={handleComplete}
           className="shadow-lg"
         >
           Complete Sorting
