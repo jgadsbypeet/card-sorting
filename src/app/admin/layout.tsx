@@ -3,14 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import { 
   LayoutDashboard, 
   FolderKanban, 
-  BarChart3, 
-  Settings, 
   LogOut,
   Menu,
-  X 
+  X,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,6 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/studies', label: 'Studies', icon: FolderKanban },
-  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AdminLayout({
@@ -29,6 +27,36 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const { data: session, status } = useSession();
+
+  // Skip auth check for login page
+  const isLoginPage = pathname === '/admin/login';
+
+  // Show loading while checking auth
+  if (status === 'loading' && !isLoginPage) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated (except on login page)
+  if (status === 'unauthenticated' && !isLoginPage) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin/login';
+    }
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Render login page without sidebar
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,13 +120,15 @@ export default function AdminLayout({
 
           {/* Footer */}
           <div className="absolute bottom-0 left-0 right-0 border-t border-border p-4">
+            {session?.user?.email && (
+              <p className="text-xs text-muted-foreground mb-2 truncate px-3">
+                {session.user.email}
+              </p>
+            )}
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-muted-foreground"
-              onClick={() => {
-                // TODO: Implement sign out
-                window.location.href = '/';
-              }}
+              onClick={() => signOut({ callbackUrl: '/admin/login' })}
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
               Sign Out
